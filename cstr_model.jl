@@ -13,13 +13,20 @@ for i = 0:ntfe
     time[i+1] = i*tfe_width
 end
 
-comp = ("A", "B")
+comp = ["A", "B"]
 stoich = Dict( [("A", -1), ("B", 1)] )
 
 m = Model(Ipopt.Optimizer)
 
 @variable(m, conc[time, comp])
 @variable(m, dcdt[time, comp])
+
+@variable(m, rate_gen[time, comp])
+@constraint(
+	m,
+	rate_eqn[t=time, j=comp],
+	rate_gen[t, j] - stoich[j]*conc[t, "A"] == 0,
+	)
 
 # Discretization equations
 @constraint(
@@ -40,7 +47,7 @@ m = Model(Ipopt.Optimizer)
 @constraint(
         m,
         conc_diff_eqn[t=time, j=comp],
-        dcdt[t, j] - stoich[j]*(conc[t, "A"] - conc[t, "B"]) == 0,
+	dcdt[t, j] - rate_gen[t, j] == 0,
         )
 
 fix(conc[t0, "A"], 1.0)
