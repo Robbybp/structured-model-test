@@ -3,10 +3,8 @@ using Ipopt
 
 println("Beginning CSTR model script");
 
-function make_model(time, tfe_width)
+function make_model(time, tfe_width, comp, stoich, k_rxn)
     ntfe = length(time)-1
-    comp = ["A", "B"]
-    stoich = Dict( [("A", -1), ("B", 1)] )
 
     m = Model(Ipopt.Optimizer)
 
@@ -33,7 +31,7 @@ function make_model(time, tfe_width)
     @constraint(
     	m,
     	rate_eqn[t=time, j=comp],
-    	rate_gen[t, j] - stoich[j]*conc[t, "A"] == 0,
+    	rate_gen[t, j] - stoich[j]*k_rxn*conc[t, "A"] == 0,
         )
 
     # Discretization equations
@@ -51,7 +49,7 @@ function make_model(time, tfe_width)
             # with a function...
             )
 
-    # Derivative equations
+    # Differential equations
     @constraint(
             m,
             conc_diff_eqn[t=time, j=comp],
@@ -67,7 +65,7 @@ end
 
 # Set-up time "set"
 ntfe = 10
-horizon = 60.0
+horizon = 10.0
 tfe_width = horizon/ntfe
 time = zeros(ntfe+1)
 t0 = time[1]
@@ -75,15 +73,21 @@ for i = 0:ntfe
     time[i+1] = i*tfe_width
 end
 
-m = make_model(time, tfe_width)
+comp = ["A", "B"]
+stoich = Dict( [("A", -1), ("B", 1)] )
+k_rxn = 1.0
+
+m = make_model(time, tfe_width, comp, stoich, k_rxn)
+
+conc_in = Dict( [("A", 5.0), ("B", 0.01)] )
 
 for t=time
-    fix(m[:conc_in][t, "A"], 5.0)
-    fix(m[:conc_in][t, "B"], 0.01)
-    if t < 10
-        fix(m[:flow_in][t], 1.0)
+    fix(m[:conc_in][t, "A"], conc_in["A"])
+    fix(m[:conc_in][t, "B"], conc_in["B"])
+    if t == 0
+        fix(m[:flow_in][t], 0.1)
     else
-        fix(m[:flow_in][t], 5.0)
+        fix(m[:flow_in][t], 1.0)
     end
 end
 
