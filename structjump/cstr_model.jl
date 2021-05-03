@@ -1,7 +1,6 @@
 using JuMP
 using StructJuMP
 using Ipopt
-using Debugger
 
 println("Beginning structured CSTR model Julia script");
 
@@ -21,7 +20,9 @@ function make_model(time, tfe_width, comp, stoich, k_rxn)
     for (i, t) in enumerate(time[2:ntfe+1])
         idx = i+1
         for j in comp
-            name = string("disc_eq_", idx, "_", j)
+            # This raises a mysterious error:
+            # type Int64 has no field value
+            # Works with Model... is this a bug?
             @constraint(
                     m,
                     dcdt[t, j] -
@@ -29,19 +30,19 @@ function make_model(time, tfe_width, comp, stoich, k_rxn)
                    )
         end
     end
-    @constraint(
-            m,
-            dcdt_disc_eqn[t=time[2:ntfe+1], j=comp],
-            dcdt[t, j] -
-            (conc[t, j] - conc[t-tfe_width, j])/tfe_width == 0,
-            # This implementation is unstable as it requires
-            # (t-tfe_width) to give the correct answer. A more
-            # stable implementation would find t-tfe_width with
-            # a "binary-search-within-tolerance" function.
-            #
-            # Should probably define this constraint expression
-            # with a function...
-            )
+    #@constraint(
+    #        m,
+    #        dcdt_disc_eqn[t=time[2:ntfe+1], j=comp],
+    #        dcdt[t, j] -
+    #        (conc[t, j] - conc[t-tfe_width, j])/tfe_width == 0,
+    #        # This implementation is unstable as it requires
+    #        # (t-tfe_width) to give the correct answer. A more
+    #        # stable implementation would find t-tfe_width with
+    #        # a "binary-search-within-tolerance" function.
+    #        #
+    #        # Should probably define this constraint expression
+    #        # with a function...
+    #        )
 
     for i in 1:ntfe
         t = time[i]
