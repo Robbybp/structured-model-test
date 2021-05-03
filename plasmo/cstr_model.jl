@@ -71,7 +71,7 @@ function make_model(time, tfe_width, comp, stoich, k_rxn)
             # with a function...
             )
 
-    return graph, nodes
+    return graph
 end
 
 # Set-up time "set"
@@ -88,7 +88,8 @@ comp = ["A", "B"]
 stoich = Dict( [("A", -1), ("B", 1)] )
 k_rxn = 1.0
 
-graph, nodes = make_model(time, tfe_width, comp, stoich, k_rxn)
+graph = make_model(time, tfe_width, comp, stoich, k_rxn)
+nodes = graph[:nodes]
 
 println(graph)
 
