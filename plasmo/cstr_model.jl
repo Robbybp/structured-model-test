@@ -5,44 +5,63 @@ using Plasmo
 println("Beginning CSTR model script using Plasmo.jl");
 
 function make_model(time, tfe_width, comp, stoich, k_rxn)
-    ntfe = length(time)-1
+    nt = length(time)
+    ntfe = nt-1
 
-    #m = Model(Ipopt.Optimizer)
     graph = OptiGraph()
-    @optinode(graph, m)
+    @optinode(graph, nodes[time])
 
-    @variable(m, conc[time, comp])
-    @variable(m, dcdt[time, comp])
+    for node in nodes
+        @variable(node, conc[comp])
+        @variable(node, dcdt[comp])
 
-    @variable(m, flow_in[time])
-    @variable(m, flow_out[time])
-    @constraint(
-    	m,
-    	flow_eqn[t=time],
-    	flow_in[t] - flow_out[t] == 0,
-    	)
+        @variable(node, flow_in)
+        @variable(node, flow_out)
+        @constraint(
+        	node,
+        	flow_eqn,
+        	flow_in - flow_out == 0,
+        	)
 
-    @variable(m, conc_in[time, comp])
-    @variable(m, conc_out[time, comp])
-    @constraint(
-    	m,
-    	conc_out_eqn[t=time, j=comp],
-    	conc_out[t, j] - conc[t, j] == 0,
-    	)
+        @variable(node, conc_in[comp])
+        @variable(node, conc_out[comp])
+        @constraint(
+        	node,
+        	conc_out_eqn[j=comp],
+        	conc_out[j] - conc[j] == 0,
+        	)
 
-    @variable(m, rate_gen[time, comp])
-    @constraint(
-    	m,
-    	rate_eqn[t=time, j=comp],
-    	rate_gen[t, j] - stoich[j]*k_rxn*conc[t, "A"] == 0,
-        )
+        @variable(node, rate_gen[comp])
+        @constraint(
+        	node,
+        	rate_eqn[j=comp],
+        	rate_gen[j] - stoich[j]*k_rxn*conc["A"] == 0,
+            )
+
+        # Differential equations
+        @constraint(
+                node,
+                conc_diff_eqn[j=comp],
+                dcdt[j] - (
+                    flow_in*conc_in[j] -
+                    flow_out*conc_out[j] +
+                    rate_gen[j]
+                    ) == 0,
+                )
+    end
 
     # Discretization equations
-    @constraint(
+    # 
+    # These are linking equations, but nothing seems to change if
+    # we delcare them with simply @constraint
+    @linkconstraint(
             graph,
             dcdt_disc_eqn[t=time[2:ntfe+1], j=comp],
-            dcdt[t, j] -
-                (conc[t, j] - conc[t-tfe_width, j])/tfe_width == 0,
+            nodes[t][:dcdt][j] -
+            (
+             nodes[t][:conc][j] -
+             nodes[t-tfe_width][:conc][j]
+            )/tfe_width == 0,
             # This implementation is unstable as it requires
             # (t-tfe_width) to give the correct answer. A more
             # stable implementation would find t-tfe_width with
@@ -52,18 +71,7 @@ function make_model(time, tfe_width, comp, stoich, k_rxn)
             # with a function...
             )
 
-    # Differential equations
-    @constraint(
-            m,
-            conc_diff_eqn[t=time, j=comp],
-            dcdt[t, j] - (
-                flow_in[t]*conc_in[t, j] -
-                flow_out[t]*conc_out[t, j] +
-                rate_gen[t, j]
-                ) == 0,
-            )
-
-    return graph
+    return graph, nodes
 end
 
 # Set-up time "set"
@@ -80,29 +88,34 @@ comp = ["A", "B"]
 stoich = Dict( [("A", -1), ("B", 1)] )
 k_rxn = 1.0
 
-graph = make_model(time, tfe_width, comp, stoich, k_rxn)
-m = find_node(graph, 1)
+graph, nodes = make_model(time, tfe_width, comp, stoich, k_rxn)
 
 println(graph)
 
 conc_in = Dict( [("A", 5.0), ("B", 0.01)] )
 
 for t=time
-    fix(m[:conc_in][t, "A"], conc_in["A"])
-    fix(m[:conc_in][t, "B"], conc_in["B"])
+    fix(nodes[t][:conc_in]["A"], conc_in["A"])
+    fix(nodes[t][:conc_in]["B"], conc_in["B"])
     if t == 0
-        fix(m[:flow_in][t], 0.1)
+        fix(nodes[t][:flow_in], 0.1)
     else
-        fix(m[:flow_in][t], 1.0)
+        fix(nodes[t][:flow_in], 1.0)
     end
 end
 
-fix(m[:conc][t0, "A"], 1.0)
-fix(m[:conc][t0, "B"], 0.0)
+fix(nodes[t0][:conc]["A"], 1.0)
+fix(nodes[t0][:conc]["B"], 0.0)
 
 ipopt = Ipopt.Optimizer
 optimize!(graph, ipopt)
 
-#println(value.(m[:conc]))
+for t=time
+    local node = nodes[t]
+    varA = value(node, node[:conc]["A"])
+    varB = value(node, node[:conc]["B"])
+    spc = " "
+    println(string(t) * spc * string(varA) * spc * string(varB))
+end
 
 println("Finished CSTR model script");
