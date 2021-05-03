@@ -111,11 +111,12 @@ ipopt = Ipopt.Optimizer
 optimize!(graph, ipopt)
 
 for t=time
-    local node = nodes[t]
-    varA = value(node, node[:conc]["A"])
-    varB = value(node, node[:conc]["B"])
-    spc = " "
-    println(string(t) * spc * string(varA) * spc * string(varB))
+    println(nodevalue.(nodes[t][:conc]))
+    # Would like a syntax like:
+    # println(nodevalue.(nodes[:][:conc]))
+    #
+    # ... something like [:conc] "broadcasted"
+    # across all the nodes...
 end
 
 println("Finished CSTR model script");
