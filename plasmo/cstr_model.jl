@@ -1,12 +1,15 @@
-using JuMP
+#using JuMP
 using Ipopt
+using Plasmo
 
-println("Beginning CSTR model script");
+println("Beginning CSTR model script using Plasmo.jl");
 
 function make_model(time, tfe_width, comp, stoich, k_rxn)
     ntfe = length(time)-1
 
-    m = Model(Ipopt.Optimizer)
+    #m = Model(Ipopt.Optimizer)
+    graph = OptiGraph()
+    @optinode(graph, m)
 
     @variable(m, conc[time, comp])
     @variable(m, dcdt[time, comp])
@@ -36,7 +39,7 @@ function make_model(time, tfe_width, comp, stoich, k_rxn)
 
     # Discretization equations
     @constraint(
-            m,
+            graph,
             dcdt_disc_eqn[t=time[2:ntfe+1], j=comp],
             dcdt[t, j] -
                 (conc[t, j] - conc[t-tfe_width, j])/tfe_width == 0,
@@ -60,7 +63,7 @@ function make_model(time, tfe_width, comp, stoich, k_rxn)
                 ) == 0,
             )
 
-    return m
+    return graph
 end
 
 # Set-up time "set"
@@ -77,7 +80,10 @@ comp = ["A", "B"]
 stoich = Dict( [("A", -1), ("B", 1)] )
 k_rxn = 1.0
 
-m = make_model(time, tfe_width, comp, stoich, k_rxn)
+graph = make_model(time, tfe_width, comp, stoich, k_rxn)
+m = find_node(graph, 1)
+
+println(graph)
 
 conc_in = Dict( [("A", 5.0), ("B", 0.01)] )
 
@@ -94,8 +100,9 @@ end
 fix(m[:conc][t0, "A"], 1.0)
 fix(m[:conc][t0, "B"], 0.0)
 
-optimize!(m)
+ipopt = Ipopt.Optimizer
+optimize!(graph, ipopt)
 
-println(value.(m[:conc]))
+#println(value.(m[:conc]))
 
 println("Finished CSTR model script");
