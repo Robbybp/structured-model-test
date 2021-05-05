@@ -1,7 +1,0 @@
-	n	97	me	97	mi	0	Iter	3	CPUs	3.133000e-03	STAT:	0
-	n	97	me	97	mi	0	Iter	3	CPUs	2.606000e-03	STAT:	0
-	n	107	me	97	mi	0	Iter	6	CPUs	2.520000e-03	STAT:	0
-	n	97	me	97	mi	0	Iter	3	CPUs	2.690000e-03	STAT:	0
-	n	97	me	97	mi	0	Iter	3	CPUs	2.589000e-03	STAT:	0
-	n	97	me	97	mi	0	Iter	3	CPUs	1.305000e-03	STAT:	0
-	n	97	me	97	mi	0	Iter	3	CPUs	2.856000e-03	STAT:	0
