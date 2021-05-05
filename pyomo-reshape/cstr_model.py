@@ -12,36 +12,14 @@ def _block_rule(b, t):
     stoich = b.parent_block().stoich
     k_rxn = b.parent_block().k_rxn
 
-    b.flow_in = pyo.Var()
-    b.flow_out = pyo.Var()
-    b.flow_eqn = pyo.Constraint(expr=b.flow_in == b.flow_out)
-
-    b.conc_in = pyo.Var(comp)
-    b.conc_out = pyo.Var(comp)
-    b.conc_out_eqn = pyo.Constraint(comp, rule={
-        j: conc[t, j] - b.conc_out[j] == 0 for j in comp
-        })
-
-    b.rate_gen = pyo.Var(comp)
-    b.rate_eqn = pyo.Constraint(comp, rule={
-        j: b.rate_gen[j] - stoich[j]*k_rxn*conc[t, "A"] == 0 for j in comp
-        })
-
-    b.conc_diff_eqn = pyo.Constraint(comp, rule={
-        j: dcdt[t, j] -
-           (
-               b.flow_in*b.conc_in[j] -
-               b.flow_out*b.conc_out[j] +
-               b.rate_gen[j]
-               ) == 0
-        for j in comp
-        })
 
 
 def make_model(horizon=10.0):
     m = pyo.ConcreteModel()
     m.comp = pyo.Set(initialize=["A", "B"])
     m.time = dae.ContinuousSet(initialize=[0, horizon])
+    time = m.time
+    comp = m.comp
 
     m.stoich = pyo.Param(m.comp, initialize={"A": -1, "B": 1}, mutable=True)
     m.k_rxn = pyo.Param(initialize=1.0, mutable=True)
@@ -49,7 +27,33 @@ def make_model(horizon=10.0):
     m.conc = pyo.Var(m.time, m.comp)
     m.dcdt = dae.DerivativeVar(m.conc, wrt=m.time)
 
-    m.time_block = pyo.Block(m.time, rule=_block_rule)
+    m.flow_in = pyo.Var(time)
+    m.flow_out = pyo.Var(time)
+
+    m.flow_eqn = pyo.Constraint(expr=m.flow_in[t] == m.flow_out[t])
+
+    m.conc_in = pyo.Var(time, comp)
+    m.conc_out = pyo.Var(time, comp)
+    m.conc_out_eqn = pyo.Constraint(time, comp, rule={
+        j: conc[t, j] - m.conc_out[t, j] == 0 for j in m.comp for t in time
+        })
+
+    m.rate_gen = pyo.Var(time, comp)
+    m.rate_eqn = pyo.Constraint(time, comp, rule={
+        j: m.rate_gen[t, j] - m.stoich[j]*m.k_rxn*m.conc[t, "A"] == 0
+        for j in m.comp for t in time
+        })
+
+    m.conc_diff_eqn = pyo.Constraint(time, comp, rule={
+        j: dcdt[t, j] -
+           (
+               m.flow_in[t]*m.conc_in[t, j] -
+               m.flow_out[t]*m.conc_out[t, j] +
+               m.rate_gen[t, j]
+               ) == 0
+        for j in m.comp
+        })
+
 
     return m
 
