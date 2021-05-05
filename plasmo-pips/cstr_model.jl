@@ -1,6 +1,14 @@
 #using JuMP
 using Ipopt
 using Plasmo
+using MPIClusterManagers
+using Distributed
+
+@everywhere using Pkg
+@everywhere Pkg.activate((@__DIR__))
+
+@everywhere using Plasmo
+@everywhere using PipsSolver
 
 println("Beginning CSTR model script using Plasmo.jl");
 
@@ -108,16 +116,23 @@ end
 fix(nodes[t0][:conc]["A"], 1.0)
 fix(nodes[t0][:conc]["B"], 0.0)
 
-ipopt = Ipopt.Optimizer
-optimize!(graph, ipopt)
+# MPI code
+manager = MPIManager(np=4)
+addprocs(manager)
 
-for t=time
-    println(nodevalue.(nodes[t][:conc]))
-    # Would like a syntax like:
-    # println(nodevalue.(nodes[:][:conc]))
-    #
-    # ... something like [:conc] "broadcasted"
-    # across all the nodes...
-end
+julia_workers = sort(collect(values(manager.mpi2j)))
+remote_references = PipsSolver.distribute(graph, julia_workers, remote_name=:pipsgraph)
 
-println("Finished CSTR model script");
+#ipopt = Ipopt.Optimizer
+#optimize!(graph, ipopt)
+#
+#for t=time
+#    println(nodevalue.(nodes[t][:conc]))
+#    # Would like a syntax like:
+#    # println(nodevalue.(nodes[:][:conc]))
+#    #
+#    # ... something like [:conc] "broadcasted"
+#    # across all the nodes...
+#end
+#
+#println("Finished CSTR model script");
