@@ -2,7 +2,8 @@ import pyomo.environ as pyo
 import cstr_model
 
 
-solver = pyo.SolverFactory("ipopt")
+solver = pyo.SolverFactory("pipsnlp_serial", solver_io="nl")
+#solver = pyo.SolverFactory("ipopt")
 
 m = cstr_model.main()
 
@@ -28,9 +29,8 @@ m.sp_error = pyo.Expression(time, comp, initialize={
 
 m.obj = pyo.Objective(expr=sum(m.sp_error[t, j]**2 for t in time for j in comp))
 
-solver.solve(m, tee=True)
+m.write("cstr.nl")
 
-m.conc.pprint()
-m.time_block[:].flow_in.pprint()
-
-import pdb; pdb.set_trace()
+#solver.solve(m, tee=True)
+#m.conc.pprint()
+#m.time_block[:].flow_in.pprint()
