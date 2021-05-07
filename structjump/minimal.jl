@@ -19,8 +19,8 @@ ntfe = length(time)-1
 time_index_map = Dict([
         (t, i) for (i, t) in enumerate(time)
         ])
-#m = StructuredModel(num_scenarios=length(time))
-m = Model()
+m = StructuredModel(num_scenarios=length(time))
+#m = Model()
 
 # It appears that any variable that appears in "linking constraints"
 # must be declared in the root model.
