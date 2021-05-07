@@ -53,7 +53,7 @@ function make_model(time, tfe_width, comp, stoich, k_rxn)
     # Discretization equations
     # 
     # These are linking equations, but nothing seems to change if
-    # we delcare them with simply @constraint
+    # we declare them with simply @constraint
     @linkconstraint(
             graph,
             dcdt_disc_eqn[t=time[2:ntfe+1], j=comp],
