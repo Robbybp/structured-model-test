@@ -1,6 +1,7 @@
 import pyomo.environ as pyo
 import pyomo.dae as dae
 from pyomo.dae.flatten import flatten_dae_components
+import matplotlib.pyplot as plt
 
 
 solver = pyo.SolverFactory("ipopt")
@@ -124,5 +125,23 @@ def main():
     return m
 
 
+def plot_states(m):
+    fig, ax = plt.subplots()
+    time = list(m.time)
+    cA = list(m.conc[:, "A"].value)
+    cB = list(m.conc[:, "B"].value)
+
+    ax.plot(time, cA, label="A", linewidth=3)
+    ax.plot(time, cB, label="B", linewidth=3)
+
+    ax.legend()
+    ax.tick_params(direction="in", width=3)
+    for spine in ax.spines.values():
+        spine.set_linewidth(3)
+
+    plt.show()
+
+
 if __name__ == "__main__":
     m = main()
+    plot_states(m)

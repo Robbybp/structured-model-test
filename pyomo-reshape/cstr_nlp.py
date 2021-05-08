@@ -1,5 +1,20 @@
 import pyomo.environ as pyo
+import matplotlib.pyplot as plt
 import cstr_model
+
+
+def plot_control(m):
+    fig, ax = plt.subplots()
+    time = list(m.time)
+    F = list(m.flow_in[:].value)
+
+    ax.step(time, F, linewidth=3)
+
+    ax.tick_params(direction="in", width=3)
+    for spine in ax.spines.values():
+        spine.set_linewidth(3)
+
+    plt.show()
 
 
 solver = pyo.SolverFactory("ipopt")
@@ -8,6 +23,7 @@ m = cstr_model.main()
 
 time = m.time
 t0 = time.first()
+t1 = time[2] # Pyomo sets are 1-indexed
 comp = m.comp
 
 m.flow_in[:].unfix()
@@ -31,3 +47,7 @@ m.obj = pyo.Objective(expr=sum(m.sp_error[t, j]**2 for t in time for j in comp))
 solver.solve(m, tee=True)
 m.conc.pprint()
 m.flow_in.pprint()
+
+cstr_model.plot_states(m)
+m.flow_in[t0].set_value(m.flow_in[t1].value)
+plot_control(m)
